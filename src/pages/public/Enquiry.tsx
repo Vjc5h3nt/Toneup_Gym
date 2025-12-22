@@ -74,6 +74,11 @@ export default function Enquiry() {
     fitness_goal: '',
     source: 'website' as const,
   });
+  // Honeypot fields - should remain empty, bots will fill them
+  const [honeypot, setHoneypot] = useState({
+    website: '',
+    company: '',
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,21 +101,35 @@ export default function Enquiry() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from('leads').insert({
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email || null,
-        preferred_call_time: formData.preferred_call_time || null,
-        preferred_visit_time: formData.preferred_visit_time || null,
-        interest: formData.interest,
-        expected_duration: formData.expected_duration,
-        fitness_goal: formData.fitness_goal || null,
-        source: formData.source,
-        status: 'new',
-        is_enquiry: true,
+      // Use edge function for rate limiting and server-side validation
+      const { data, error } = await supabase.functions.invoke('submit-enquiry', {
+        body: {
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email || null,
+          preferred_call_time: formData.preferred_call_time || null,
+          preferred_visit_time: formData.preferred_visit_time || null,
+          interest: formData.interest,
+          expected_duration: formData.expected_duration,
+          fitness_goal: formData.fitness_goal || null,
+          source: formData.source,
+          // Include honeypot fields - server will reject if filled
+          website: honeypot.website,
+          company: honeypot.company,
+        },
       });
 
       if (error) throw error;
+      
+      // Check for rate limit response
+      if (data?.error) {
+        if (data.error.includes('Too many')) {
+          toast.error('Too many submissions. Please try again later.');
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
 
       setIsSuccess(true);
       toast.success('Enquiry submitted successfully!');
@@ -309,7 +328,31 @@ export default function Enquiry() {
                 {/* Fitness Goal */}
                 <div className="space-y-2">
                   <Label>Your Fitness Goal (Optional)</Label>
-                  <Textarea
+                {/* Honeypot fields - hidden from users, bots will fill them */}
+                <div className="hidden" aria-hidden="true">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    name="website"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot.website}
+                    onChange={(e) => setHoneypot({ ...honeypot, website: e.target.value })}
+                  />
+                  <Label htmlFor="company">Company</Label>
+                  <Input
+                    id="company"
+                    name="company"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot.company}
+                    onChange={(e) => setHoneypot({ ...honeypot, company: e.target.value })}
+                  />
+                </div>
+
+                <Textarea
                     value={formData.fitness_goal}
                     onChange={(e) => setFormData({ ...formData, fitness_goal: e.target.value })}
                     placeholder="Tell us about your fitness goals..."
