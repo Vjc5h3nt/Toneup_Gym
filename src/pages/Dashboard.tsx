@@ -1,81 +1,98 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, UserPlus, TrendingUp, DollarSign, UserCheck, UserX } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Users, UserPlus, TrendingUp, DollarSign, UserCheck, UserX, Target, Activity } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { DateRangeFilter } from '@/components/dashboard/DateRangeFilter';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { RecentActivity } from '@/components/dashboard/RecentActivity';
+import { UpcomingFollowUps } from '@/components/dashboard/UpcomingFollowUps';
+import { ExpiringMemberships } from '@/components/dashboard/ExpiringMemberships';
+import { subDays, format, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 interface DashboardStats {
   totalMembers: number;
   activeMembers: number;
   expiredMembers: number;
-  newLeadsToday: number;
-  conversionsThisMonth: number;
-  todayCollection: number;
+  totalLeads: number;
+  hotLeads: number;
+  conversions: number;
+  totalRevenue: number;
+  conversionRate: number;
 }
 
-const COLORS = ['hsl(24, 95%, 53%)', 'hsl(174, 72%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(199, 89%, 48%)'];
+const COLORS = ['hsl(24, 95%, 53%)', 'hsl(174, 72%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(199, 89%, 48%)', 'hsl(280, 65%, 60%)'];
 
 export default function Dashboard() {
+  const [startDate, setStartDate] = useState(subDays(new Date(), 29));
+  const [endDate, setEndDate] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeMembers: 0,
     expiredMembers: 0,
-    newLeadsToday: 0,
-    conversionsThisMonth: 0,
-    todayCollection: 0,
+    totalLeads: 0,
+    hotLeads: 0,
+    conversions: 0,
+    totalRevenue: 0,
+    conversionRate: 0,
   });
   const [revenueData, setRevenueData] = useState<{ date: string; amount: number }[]>([]);
   const [sourceData, setSourceData] = useState<{ name: string; value: number }[]>([]);
+  const [membershipData, setMembershipData] = useState<{ name: string; value: number }[]>([]);
+  const [attendanceData, setAttendanceData] = useState<{ date: string; count: number }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-      const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const startStr = format(startOfDay(startDate), 'yyyy-MM-dd');
+      const endStr = format(endOfDay(endDate), 'yyyy-MM-dd');
 
-      // Fetch all stats in parallel
       const [
         { count: totalMembers },
         { count: activeMembers },
         { count: expiredMembers },
-        { count: newLeadsToday },
-        { count: conversionsThisMonth },
-        { data: todayPayments },
-        { data: last7DaysPayments },
+        { count: totalLeads },
+        { count: hotLeads },
+        { count: conversions },
+        { data: payments },
         { data: leadSources },
+        { data: memberships },
+        { data: attendance },
       ] = await Promise.all([
         supabase.from('members').select('*', { count: 'exact', head: true }),
         supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('status', 'expired'),
-        supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', today),
-        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'converted').gte('updated_at', startOfMonth),
-        supabase.from('payments').select('amount').gte('payment_date', today),
-        supabase.from('payments').select('amount, payment_date').gte('payment_date', last7Days),
-        supabase.from('leads').select('source'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'hot'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'converted').gte('updated_at', startStr).lte('updated_at', endStr + 'T23:59:59'),
+        supabase.from('payments').select('amount, payment_date').gte('payment_date', startStr).lte('payment_date', endStr),
+        supabase.from('leads').select('source').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('memberships').select('type, status'),
+        supabase.from('member_attendance').select('check_in_time').gte('check_in_time', startStr).lte('check_in_time', endStr + 'T23:59:59'),
       ]);
 
-      // Calculate today's collection
-      const todayTotal = todayPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      // Calculate total revenue
+      const totalRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-      // Process revenue data for last 7 days
+      // Process revenue data by date
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
       const revenueByDate: Record<string, number> = {};
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        revenueByDate[dateStr] = 0;
-      }
-      last7DaysPayments?.forEach((p) => {
+      days.forEach((d) => {
+        revenueByDate[format(d, 'yyyy-MM-dd')] = 0;
+      });
+      payments?.forEach((p) => {
         if (revenueByDate[p.payment_date] !== undefined) {
           revenueByDate[p.payment_date] += Number(p.amount);
         }
       });
       const formattedRevenueData = Object.entries(revenueByDate).map(([date, amount]) => ({
-        date: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+        date: format(new Date(date), days.length > 14 ? 'MMM d' : 'EEE'),
         amount,
       }));
 
@@ -86,45 +103,87 @@ export default function Dashboard() {
         sourceCount[source] = (sourceCount[source] || 0) + 1;
       });
       const formattedSourceData = Object.entries(sourceCount).map(([name, value]) => ({
-        name: name.replace('_', ' ').charAt(0).toUpperCase() + name.replace('_', ' ').slice(1),
+        name: name.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase()),
         value,
       }));
+
+      // Process membership types
+      const typeCount: Record<string, number> = {};
+      memberships?.forEach((m) => {
+        const type = m.type || 'normal';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+      const formattedMembershipData = Object.entries(typeCount).map(([name, value]) => ({
+        name: name.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase()),
+        value,
+      }));
+
+      // Process attendance data
+      const attendanceByDate: Record<string, number> = {};
+      days.forEach((d) => {
+        attendanceByDate[format(d, 'yyyy-MM-dd')] = 0;
+      });
+      attendance?.forEach((a) => {
+        const date = format(new Date(a.check_in_time), 'yyyy-MM-dd');
+        if (attendanceByDate[date] !== undefined) {
+          attendanceByDate[date]++;
+        }
+      });
+      const formattedAttendanceData = Object.entries(attendanceByDate).map(([date, count]) => ({
+        date: format(new Date(date), days.length > 14 ? 'MMM d' : 'EEE'),
+        count,
+      }));
+
+      // Calculate conversion rate
+      const conversionRate = totalLeads ? ((conversions || 0) / (totalLeads || 1)) * 100 : 0;
 
       setStats({
         totalMembers: totalMembers || 0,
         activeMembers: activeMembers || 0,
         expiredMembers: expiredMembers || 0,
-        newLeadsToday: newLeadsToday || 0,
-        conversionsThisMonth: conversionsThisMonth || 0,
-        todayCollection: todayTotal,
+        totalLeads: totalLeads || 0,
+        hotLeads: hotLeads || 0,
+        conversions: conversions || 0,
+        totalRevenue,
+        conversionRate,
       });
       setRevenueData(formattedRevenueData);
       setSourceData(formattedSourceData);
+      setMembershipData(formattedMembershipData);
+      setAttendanceData(formattedAttendanceData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const statCards = [
     { title: 'Total Members', value: stats.totalMembers, icon: Users, color: 'text-primary' },
-    { title: 'Active Members', value: stats.activeMembers, icon: UserCheck, color: 'text-success' },
-    { title: 'Expired Members', value: stats.expiredMembers, icon: UserX, color: 'text-destructive' },
-    { title: 'New Leads Today', value: stats.newLeadsToday, icon: UserPlus, color: 'text-info' },
-    { title: 'Conversions (Month)', value: stats.conversionsThisMonth, icon: TrendingUp, color: 'text-accent' },
-    { title: "Today's Collection", value: `₹${stats.todayCollection.toLocaleString()}`, icon: DollarSign, color: 'text-warning' },
+    { title: 'Active Memberships', value: stats.activeMembers, icon: UserCheck, color: 'text-success' },
+    { title: 'Expired Memberships', value: stats.expiredMembers, icon: UserX, color: 'text-destructive' },
+    { title: 'Total Leads', value: stats.totalLeads, icon: UserPlus, color: 'text-info' },
+    { title: 'Hot Leads', value: stats.hotLeads, icon: Target, color: 'text-warning' },
+    { title: 'Conversions', value: stats.conversions, icon: TrendingUp, color: 'text-accent' },
+    { title: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-success' },
+    { title: 'Conversion Rate', value: `${stats.conversionRate.toFixed(1)}%`, icon: Activity, color: 'text-primary' },
   ];
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Loading your gym analytics...</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Loading your gym analytics...</p>
+          </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader className="pb-2">
                 <div className="h-4 w-24 rounded bg-muted" />
@@ -141,43 +200,56 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's your gym overview.</p>
+      {/* Header with Date Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back! Here's your gym overview.</p>
+        </div>
+        <DateRangeFilter startDate={startDate} endDate={endDate} onDateChange={handleDateChange} />
       </div>
 
+      {/* Quick Actions */}
+      <QuickActions />
+
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.title} className="transition-shadow hover:shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="text-lg sm:text-2xl font-bold">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* Charts Row 1 */}
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Revenue (Last 7 Days)</CardTitle>
+            <CardTitle>Revenue Trend</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueData}>
+                  <AreaChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(24, 95%, 53%)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(24, 95%, 53%)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" />
-                    <YAxis className="text-xs" />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis className="text-xs" tick={{ fontSize: 10 }} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
@@ -186,8 +258,8 @@ export default function Dashboard() {
                       }}
                       formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
                     />
-                    <Bar dataKey="amount" fill="hsl(24, 95%, 53%)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Area type="monotone" dataKey="amount" stroke="hsl(24, 95%, 53%)" fill="url(#revenueGradient)" strokeWidth={2} />
+                  </AreaChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -198,7 +270,43 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Lead Sources Chart */}
+        {/* Attendance Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Check-ins</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              {attendanceData.some((d) => d.count > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={attendanceData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis className="text-xs" tick={{ fontSize: 10 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [value, 'Check-ins']}
+                    />
+                    <Bar dataKey="count" fill="hsl(174, 72%, 40%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No attendance data yet
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts Row 2 */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Lead Sources */}
         <Card>
           <CardHeader>
             <CardTitle>Lead Sources</CardTitle>
@@ -239,6 +347,55 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Membership Types */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Membership Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              {membershipData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={membershipData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    >
+                      {membershipData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No membership data yet
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Activity and Follow-ups */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <RecentActivity />
+        <UpcomingFollowUps />
+        <ExpiringMemberships />
       </div>
     </div>
   );
