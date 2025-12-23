@@ -242,28 +242,30 @@ export default function StaffDetailDialog({
             </TabsContent>
 
             <TabsContent value="attendance" className="m-0 space-y-4">
-              {/* Quick Actions - Both Check In and Check Out */}
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleCheckIn} 
+              {/* Quick Actions - Attendance */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={handleCheckIn}
                   className="gradient-primary"
                   disabled={!!activeSession}
                 >
                   <LogIn className="mr-2 h-4 w-4" />
-                  Check In
+                  {activeSession ? 'Checked In' : 'Check In'}
                 </Button>
-                <Button 
-                  onClick={() => activeSession && handleCheckOut(activeSession.id)} 
+
+                <Button
+                  onClick={() => activeSession && handleCheckOut(activeSession.id)}
                   variant="secondary"
                   disabled={!activeSession}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Check Out
                 </Button>
+
                 {activeSession && (
-                  <Badge variant="outline" className="py-2 px-4">
+                  <Badge variant="outline" className="py-2">
                     <Clock className="mr-2 h-4 w-4" />
-                    Active Session
+                    Active since {activeSession.in_time}
                   </Badge>
                 )}
               </div>
