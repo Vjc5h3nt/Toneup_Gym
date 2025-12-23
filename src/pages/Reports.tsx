@@ -1,19 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Download, FileSpreadsheet, FileText, BarChart3, Users, Target } from 'lucide-react';
+import { Download, FileSpreadsheet, FileText, BarChart3, Users, Target, ClipboardList } from 'lucide-react';
 import { RevenueChart, getRevenueExportData } from '@/components/reports/RevenueChart';
 import { MemberStatistics, getMemberExportData } from '@/components/reports/MemberStatistics';
 import { LeadConversionReport, getLeadExportData } from '@/components/reports/LeadConversionReport';
+import AttendanceReport from '@/components/reports/AttendanceReport';
 import { exportToCSV, exportToPDF } from '@/lib/exportUtils';
 import { toast } from 'sonner';
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState('revenue');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || 'revenue');
   const [isExporting, setIsExporting] = useState(false);
 
+  useEffect(() => {
+    if (tabParam && ['revenue', 'members', 'leads', 'attendance'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
+
   const handleExport = async (format: 'csv' | 'pdf') => {
+    if (activeTab === 'attendance') {
+      // Attendance report has its own export functionality
+      toast.info('Use the export buttons in the Attendance tab');
+      return;
+    }
+
     setIsExporting(true);
     try {
       let data: Record<string, unknown>[] = [];
@@ -65,28 +86,30 @@ export default function Reports() {
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="text-muted-foreground">View detailed analytics and download reports</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button disabled={isExporting}>
-              <Download className="mr-2 h-4 w-4" />
-              {isExporting ? 'Exporting...' : 'Export'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleExport('csv')}>
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
-              Download as CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('pdf')}>
-              <FileText className="mr-2 h-4 w-4" />
-              Download as PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {activeTab !== 'attendance' && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button disabled={isExporting}>
+                <Download className="mr-2 h-4 w-4" />
+                {isExporting ? 'Exporting...' : 'Export'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Download as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <FileText className="mr-2 h-4 w-4" />
+                Download as PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="revenue" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Revenue</span>
@@ -98,6 +121,10 @@ export default function Reports() {
           <TabsTrigger value="leads" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             <span className="hidden sm:inline">Leads</span>
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Attendance</span>
           </TabsTrigger>
         </TabsList>
 
@@ -111,6 +138,10 @@ export default function Reports() {
 
         <TabsContent value="leads" className="space-y-4">
           <LeadConversionReport />
+        </TabsContent>
+
+        <TabsContent value="attendance" className="space-y-4">
+          <AttendanceReport />
         </TabsContent>
       </Tabs>
     </div>
