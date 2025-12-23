@@ -156,14 +156,8 @@ export default function MemberProfileSheet({
     }
   };
 
-  // Find today's active session (checked in but not checked out)
-  const todayActiveSession = attendance.find((a) => {
-    const checkInDate = parseISO(a.check_in_time);
-    const today = new Date();
-    return (
-      checkInDate.toDateString() === today.toDateString() && !a.check_out_time
-    );
-  });
+  // Find any active session (checked in but not checked out)
+  const activeSession = attendance.find((a) => !a.check_out_time);
 
   const filteredMemberships = memberships.filter((m) => {
     if (membershipFilter === 'all') return true;
@@ -248,7 +242,7 @@ export default function MemberProfileSheet({
                 size="sm" 
                 onClick={handleCheckIn} 
                 className="gradient-primary"
-                disabled={!!todayActiveSession}
+                disabled={!!activeSession}
               >
                 <LogIn className="mr-2 h-4 w-4" />
                 Check In
@@ -256,8 +250,8 @@ export default function MemberProfileSheet({
               <Button 
                 size="sm" 
                 variant="secondary" 
-                onClick={() => todayActiveSession && handleCheckOut(todayActiveSession.id)}
-                disabled={!todayActiveSession}
+                onClick={() => activeSession && handleCheckOut(activeSession.id)}
+                disabled={!activeSession}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Check Out
