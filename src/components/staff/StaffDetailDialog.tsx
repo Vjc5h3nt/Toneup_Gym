@@ -70,7 +70,6 @@ export default function StaffDetailDialog({
   const [attendance, setAttendance] = useState<StaffAttendance[]>([]);
   const [payroll, setPayroll] = useState<Payroll[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [todayAttendance, setTodayAttendance] = useState<StaffAttendance | null>(null);
 
   useEffect(() => {
     if (open && staff) {
@@ -88,13 +87,11 @@ export default function StaffDetailDialog({
       .select('*')
       .eq('staff_id', staffId)
       .gte('date', twoDaysAgo)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .order('in_time', { ascending: false });
 
     if (!error && data) {
       setAttendance(data as StaffAttendance[]);
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const todayRecord = data.find((a) => a.date === today);
-      setTodayAttendance(todayRecord || null);
     }
     setIsLoading(false);
   };
@@ -132,12 +129,15 @@ export default function StaffDetailDialog({
     }
   };
 
-  const handleCheckOut = async () => {
-    if (!staff || !todayAttendance) return;
+  const handleCheckOut = async (attendanceId: string) => {
+    if (!staff) return;
     const now = format(new Date(), 'HH:mm');
+    
+    const attendanceRecord = attendance.find(a => a.id === attendanceId);
+    if (!attendanceRecord) return;
 
     // Calculate hours worked
-    const inTime = todayAttendance.in_time;
+    const inTime = attendanceRecord.in_time;
     let hoursWorked = null;
     if (inTime) {
       const [inH, inM] = inTime.split(':').map(Number);
@@ -152,7 +152,7 @@ export default function StaffDetailDialog({
         out_time: now,
         hours_worked: hoursWorked,
       })
-      .eq('id', todayAttendance.id);
+      .eq('id', attendanceId);
 
     if (error) {
       toast.error('Failed to check out');
@@ -164,9 +164,8 @@ export default function StaffDetailDialog({
 
   if (!staff) return null;
 
-  // Check if today has an active session (checked in but not out)
-  const hasActiveSession = todayAttendance && !todayAttendance.out_time;
-  const hasCompletedToday = todayAttendance && todayAttendance.out_time;
+  // Find any active session (checked in but not checked out)
+  const activeSession = attendance.find((a) => a.in_time && !a.out_time);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -248,23 +247,23 @@ export default function StaffDetailDialog({
                 <Button 
                   onClick={handleCheckIn} 
                   className="gradient-primary"
-                  disabled={!!todayAttendance}
+                  disabled={!!activeSession}
                 >
                   <LogIn className="mr-2 h-4 w-4" />
                   Check In
                 </Button>
                 <Button 
-                  onClick={handleCheckOut} 
+                  onClick={() => activeSession && handleCheckOut(activeSession.id)} 
                   variant="secondary"
-                  disabled={!hasActiveSession}
+                  disabled={!activeSession}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Check Out
                 </Button>
-                {hasCompletedToday && (
+                {activeSession && (
                   <Badge variant="outline" className="py-2 px-4">
                     <Clock className="mr-2 h-4 w-4" />
-                    Today: {todayAttendance.hours_worked}h
+                    Active Session
                   </Badge>
                 )}
               </div>
@@ -283,18 +282,19 @@ export default function StaffDetailDialog({
                         <TableHead>In Time</TableHead>
                         <TableHead>Out Time</TableHead>
                         <TableHead>Hours</TableHead>
+                        <TableHead>Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center">
+                          <TableCell colSpan={5} className="text-center">
                             Loading...
                           </TableCell>
                         </TableRow>
                       ) : attendance.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground">
                             No attendance records in the past 2 days
                           </TableCell>
                         </TableRow>
@@ -310,6 +310,18 @@ export default function StaffDetailDialog({
                               ) : a.in_time && !a.out_time ? (
                                 <Badge>Active</Badge>
                               ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {a.in_time && !a.out_time && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleCheckOut(a.id)}
+                                >
+                                  <LogOut className="h-3 w-3 mr-1" />
+                                  Out
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))
