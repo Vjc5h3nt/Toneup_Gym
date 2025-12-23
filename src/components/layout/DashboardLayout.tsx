@@ -38,7 +38,17 @@ const navItems = [
   { to: '/dashboard/lead-calendar', icon: CalendarDays, label: 'Schedule' },
   { to: '/dashboard/members', icon: Users, label: 'Members' },
   { to: '/dashboard/staff', icon: UsersRound, label: 'Staff' },
-  { to: '/dashboard/reports', icon: BarChart3, label: 'Reports' },
+  { 
+    to: '/dashboard/reports', 
+    icon: BarChart3, 
+    label: 'Reports',
+    subItems: [
+      { to: '/dashboard/reports?tab=revenue', label: 'Revenue Report' },
+      { to: '/dashboard/reports?tab=members', label: 'Member Statistics' },
+      { to: '/dashboard/reports?tab=leads', label: 'Lead Conversion' },
+      { to: '/dashboard/reports?tab=attendance', label: 'Attendance Report' },
+    ]
+  },
 ];
 
 export function DashboardLayout() {
@@ -118,23 +128,55 @@ export function DashboardLayout() {
         <ScrollArea className="flex-1 px-3 py-4">
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                      : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-                  )
-                }
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </NavLink>
+              item.subItems ? (
+                <div key={item.to} className="space-y-1">
+                  <NavLink
+                    to={item.to}
+                    onClick={() => setSidebarOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                      )
+                    }
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </NavLink>
+                  <div className="ml-7 space-y-1">
+                    {item.subItems.map((sub) => (
+                      <NavLink
+                        key={sub.to}
+                        to={sub.to}
+                        onClick={() => setSidebarOpen(false)}
+                        className="block rounded-md px-3 py-1.5 text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors"
+                      >
+                        {sub.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                    )
+                  }
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </NavLink>
+              )
             ))}
           </nav>
         </ScrollArea>
