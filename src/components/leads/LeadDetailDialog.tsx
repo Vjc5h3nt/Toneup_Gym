@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead, LeadNote } from '@/types/database';
 import {
@@ -81,15 +81,19 @@ export default function LeadDetailDialog({
     setIsLoadingNotes(false);
   };
 
-  const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && lead) {
+  // Fetch notes when dialog opens or lead changes
+  useEffect(() => {
+    if (open && lead) {
       fetchNotes(lead.id);
       setFollowUpDate(lead.next_follow_up || '');
-    } else {
+    } else if (!open) {
       setNotes([]);
       setNewNote('');
       setFollowUpDate('');
     }
+  }, [open, lead?.id]);
+
+  const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
   };
 
