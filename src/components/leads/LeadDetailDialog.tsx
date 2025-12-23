@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Lead, LeadNote } from '@/types/database';
+import type { Lead, LeadFollowUp } from '@/types/database';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -23,8 +24,8 @@ import {
   Target,
   Clock,
   User,
-  MessageSquare,
-  Send,
+  Save,
+  History,
 } from 'lucide-react';
 
 interface LeadDetailDialogProps {
@@ -44,7 +45,7 @@ const statusFlow: Record<string, string[]> = {
 const statusColors: Record<string, string> = {
   new: 'bg-info text-info-foreground',
   contacted: 'bg-warning text-warning-foreground',
-  converted: 'bg-success text-success-foreground',
+  converted: 'bg-green-500 text-white',
   lost: 'bg-muted text-muted-foreground',
 };
 
@@ -61,33 +62,33 @@ export default function LeadDetailDialog({
   onOpenChange,
   onUpdate,
 }: LeadDetailDialogProps) {
-  const [notes, setNotes] = useState<LeadNote[]>([]);
+  const [followUps, setFollowUps] = useState<LeadFollowUp[]>([]);
   const [newNote, setNewNote] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fetchNotes = async (leadId: string) => {
-    setIsLoadingNotes(true);
+  const fetchFollowUps = async (leadId: string) => {
+    setIsLoading(true);
     const { data, error } = await supabase
-      .from('lead_notes')
+      .from('lead_follow_ups')
       .select('*, staff:staff(name)')
       .eq('lead_id', leadId)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      setNotes(data as LeadNote[]);
+      setFollowUps(data as LeadFollowUp[]);
     }
-    setIsLoadingNotes(false);
+    setIsLoading(false);
   };
 
-  // Fetch notes when dialog opens or lead changes
+  // Fetch follow-ups when dialog opens or lead changes
   useEffect(() => {
     if (open && lead) {
-      fetchNotes(lead.id);
+      fetchFollowUps(lead.id);
       setFollowUpDate(lead.next_follow_up || '');
     } else if (!open) {
-      setNotes([]);
+      setFollowUps([]);
       setNewNote('');
       setFollowUpDate('');
     }
@@ -115,39 +116,46 @@ export default function LeadDetailDialog({
     setIsUpdating(false);
   };
 
-  const saveChanges = async () => {
+  const saveFollowUp = async () => {
     if (!lead) return;
+    if (!followUpDate) {
+      toast.error('Please select a follow-up date');
+      return;
+    }
+
     setIsUpdating(true);
 
-    // Update follow-up date
-    const { error: followUpError } = await supabase
+    // Update lead's next follow-up date
+    const { error: leadError } = await supabase
       .from('leads')
-      .update({ next_follow_up: followUpDate || null })
+      .update({ next_follow_up: followUpDate })
       .eq('id', lead.id);
 
-    if (followUpError) {
+    if (leadError) {
       toast.error('Failed to update follow-up date');
       setIsUpdating(false);
       return;
     }
 
-    // Add note if provided
-    if (newNote.trim()) {
-      const { error: noteError } = await supabase.from('lead_notes').insert({
+    // Create follow-up entry
+    const { error: followUpError } = await supabase
+      .from('lead_follow_ups')
+      .insert({
         lead_id: lead.id,
-        note: newNote.trim(),
+        follow_up_date: followUpDate,
+        note: newNote.trim() || null,
+        status_at_time: lead.status,
       });
 
-      if (noteError) {
-        toast.error('Failed to add note');
-        setIsUpdating(false);
-        return;
-      }
-      setNewNote('');
-      fetchNotes(lead.id);
+    if (followUpError) {
+      toast.error('Failed to save follow-up entry');
+      setIsUpdating(false);
+      return;
     }
 
-    toast.success('Changes saved');
+    toast.success('Follow-up saved');
+    setNewNote('');
+    fetchFollowUps(lead.id);
     onUpdate();
     setIsUpdating(false);
   };
@@ -237,81 +245,96 @@ export default function LeadDetailDialog({
 
             <Separator />
 
-            {/* Follow-up Date */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Next Follow-up</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={followUpDate}
-                  onChange={(e) => setFollowUpDate(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {lead.next_follow_up && (
-                <p className="text-sm text-muted-foreground">
-                  Current: {format(new Date(lead.next_follow_up), 'PPP')}
-                </p>
-              )}
-            </div>
+            {/* Add Follow-up Entry */}
+            <Card>
+              <CardContent className="p-4 space-y-4">
+                <Label className="text-base font-semibold">Add Follow-up Entry</Label>
+                
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Next Follow-up Date</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={followUpDate}
+                        onChange={(e) => setFollowUpDate(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">Notes</Label>
+                    <Textarea
+                      placeholder="Add notes about this follow-up..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={saveFollowUp}
+                    disabled={isUpdating || !followUpDate}
+                    className="w-full"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Follow-up
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <Separator />
 
-            {/* Previous Notes */}
+            {/* Follow-up History */}
             <div className="space-y-3">
               <Label className="text-base font-semibold flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Previous Notes
+                <History className="h-4 w-4" />
+                Follow-up History
               </Label>
-              <div className="space-y-3">
-                {isLoadingNotes ? (
-                  <div className="text-center py-4 text-muted-foreground">
-                    Loading notes...
-                  </div>
-                ) : notes.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">
-                    No notes yet.
-                  </div>
-                ) : (
-                  notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="rounded-lg border bg-muted/50 p-3 space-y-1"
-                    >
-                      <p className="text-sm">{note.note}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(note.created_at), 'PPp')}
-                        {(note as any).staff?.name && ` • ${(note as any).staff.name}`}
-                      </p>
+              
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-3 pr-2">
+                  {isLoading ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      Loading history...
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : followUps.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      No follow-up entries yet.
+                    </div>
+                  ) : (
+                    followUps.map((followUp) => (
+                      <div
+                        key={followUp.id}
+                        className="rounded-lg border bg-muted/50 p-3 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">
+                              {format(new Date(followUp.follow_up_date), 'PPP')}
+                            </span>
+                          </div>
+                          <Badge className={`${statusColors[followUp.status_at_time] || 'bg-muted text-muted-foreground'} text-xs`}>
+                            {statusLabels[followUp.status_at_time] || followUp.status_at_time}
+                          </Badge>
+                        </div>
+                        {followUp.note && (
+                          <p className="text-sm text-foreground">{followUp.note}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(followUp.created_at), 'PPp')}
+                          {(followUp as any).staff?.name && ` • ${(followUp as any).staff.name}`}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </div>
-
-            <Separator />
-
-            {/* Add New Note */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Add Note</Label>
-              <Textarea
-                placeholder="Add a note about this lead..."
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                className="min-h-[80px]"
-              />
-            </div>
-
-            {/* Save Button */}
-            <Button
-              onClick={saveChanges}
-              disabled={isUpdating}
-              className="w-full"
-            >
-              <Send className="mr-2 h-4 w-4" />
-              Save
-            </Button>
           </div>
         </ScrollArea>
       </DialogContent>

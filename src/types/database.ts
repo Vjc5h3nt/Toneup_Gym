@@ -98,6 +98,17 @@ export interface LeadNote {
   staff?: Staff;
 }
 
+export interface LeadFollowUp {
+  id: string;
+  lead_id: string;
+  follow_up_date: string;
+  note: string | null;
+  status_at_time: string;
+  created_by: string | null;
+  created_at: string;
+  staff?: Staff;
+}
+
 export interface StaffAttendance {
   id: string;
   staff_id: string;

@@ -52,6 +52,51 @@ export type Database = {
           },
         ]
       }
+      lead_follow_ups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          follow_up_date: string
+          id: string
+          lead_id: string
+          note: string | null
+          status_at_time: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          follow_up_date: string
+          id?: string
+          lead_id: string
+          note?: string | null
+          status_at_time: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          follow_up_date?: string
+          id?: string
+          lead_id?: string
+          note?: string | null
+          status_at_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_follow_ups_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_follow_ups_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_notes: {
         Row: {
           created_at: string
