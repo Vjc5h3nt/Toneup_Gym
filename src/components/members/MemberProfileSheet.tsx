@@ -236,26 +236,35 @@ export default function MemberProfileSheet({
               )}
             </div>
 
-            {/* Quick Actions - Both Check In and Check Out */}
-            <div className="flex gap-2 mt-4">
-              <Button 
-                size="sm" 
-                onClick={handleCheckIn} 
+            {/* Quick Actions - Attendance */}
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <Button
+                size="sm"
+                onClick={handleCheckIn}
                 className="gradient-primary"
                 disabled={!!activeSession}
               >
                 <LogIn className="mr-2 h-4 w-4" />
-                Check In
+                {activeSession ? 'Checked In' : 'Check In'}
               </Button>
-              <Button 
-                size="sm" 
-                variant="secondary" 
+
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => activeSession && handleCheckOut(activeSession.id)}
                 disabled={!activeSession}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Check Out
               </Button>
+
+              {activeSession && (
+                <Badge variant="outline" className="py-2">
+                  <Clock className="mr-2 h-4 w-4" />
+                  Active since {format(parseISO(activeSession.check_in_time), 'p')}
+                </Badge>
+              )}
+
               <Button size="sm" variant="secondary" onClick={() => setAddPaymentOpen(true)}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 Record Payment
