@@ -34,7 +34,9 @@ import {
   Clock,
   Calendar,
   TrendingUp,
+  ClipboardCheck,
 } from 'lucide-react';
+import ManageAttendance from './ManageAttendance';
 
 interface StaffAttendanceData {
   id: string;
@@ -606,6 +608,10 @@ export default function AttendanceReport() {
                 <Users className="h-4 w-4" />
                 Member Attendance
               </TabsTrigger>
+              <TabsTrigger value="manage" className="gap-2">
+                <ClipboardCheck className="h-4 w-4" />
+                Manage Attendance
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="staff">
@@ -702,6 +708,10 @@ export default function AttendanceReport() {
                   </TableBody>
                 </Table>
               </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="manage">
+              <ManageAttendance />
             </TabsContent>
           </Tabs>
         </CardContent>
