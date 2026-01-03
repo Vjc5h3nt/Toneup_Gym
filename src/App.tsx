@@ -16,6 +16,7 @@ import StaffPage from "./pages/Staff";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import MembershipPlans from "./pages/MembershipPlans";
+import ManageAttendance from "./pages/ManageAttendance";
 import NotFound from "./pages/NotFound";
 // Public pages
 import Home from "./pages/public/Home";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<Settings />} />
               <Route path="membership-plans" element={<MembershipPlans />} />
+              <Route path="attendance" element={<ManageAttendance />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
