@@ -74,7 +74,7 @@ export default function Home() {
                 </Button>
               </a>
               <Link to="/enquiry">
-                <Button size="lg" variant="outline" className="text-lg gap-2 w-full sm:w-auto border-white text-white hover:bg-white hover:text-foreground">
+                <Button size="lg" variant="outline" className="text-lg gap-2 w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                   <Calendar className="h-5 w-5" />
                   Book a Visit
                 </Button>
