@@ -27,6 +27,7 @@ import Trainers from "./pages/public/Trainers";
 import Gallery from "./pages/public/Gallery";
 import Contact from "./pages/public/Contact";
 import Enquiry from "./pages/public/Enquiry";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ScrollToTop />
           <Routes>
             {/* Public Website */}
             <Route element={<PublicLayout />}>
