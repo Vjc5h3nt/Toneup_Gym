@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Dumbbell, Loader2, LogOut } from 'lucide-react';
+import { Dumbbell, Loader2, LogOut, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { z } from 'zod';
 
 const authSchema = z.object({
@@ -138,7 +139,14 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sidebar to-background p-4">
-      <Card className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md">
+        <Link to="/">
+          <Button variant="ghost" className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        </Link>
+        <Card className="animate-fade-in">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full gradient-primary">
             <Dumbbell className="h-8 w-8 text-primary-foreground" />
@@ -246,6 +254,7 @@ export default function Auth() {
           </p>
         </CardFooter>
       </Card>
+      </div>
     </div>
   );
 }
