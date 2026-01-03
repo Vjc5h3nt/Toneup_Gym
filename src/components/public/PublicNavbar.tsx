@@ -49,7 +49,7 @@ export function PublicNavbar() {
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <Link to="/enquiry">
-              <Button variant="outline">Book a Visit</Button>
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">Book a Visit</Button>
             </Link>
             <Link to="/auth">
               <Button className="gradient-primary">Login</Button>
@@ -89,7 +89,7 @@ export function PublicNavbar() {
               ))}
               <div className="flex gap-2 px-4 pt-4 border-t mt-2">
                 <Link to="/enquiry" className="flex-1">
-                  <Button variant="outline" className="w-full">Book a Visit</Button>
+                  <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">Book a Visit</Button>
                 </Link>
                 <Link to="/auth" className="flex-1">
                   <Button className="gradient-primary w-full">Login</Button>
