@@ -79,10 +79,10 @@ const Settings = () => {
   }, [staff, user]);
 
   const handleProfileUpdate = async () => {
-    if (!staff?.id) {
+    if (!user) {
       toast({
         title: "Error",
-        description: "Staff profile not found",
+        description: "You must be logged in to update your profile",
         variant: "destructive",
       });
       return;
@@ -90,22 +90,44 @@ const Settings = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('staff')
-        .update({
-          name: profileData.name,
-          phone: profileData.phone,
-          specialization: profileData.specialization,
-          photo_url: profileData.photo_url,
-        })
-        .eq('id', staff.id);
+      if (staff?.id) {
+        // Update existing staff record
+        const { error } = await supabase
+          .from('staff')
+          .update({
+            name: profileData.name,
+            phone: profileData.phone,
+            specialization: profileData.specialization,
+            photo_url: profileData.photo_url,
+          })
+          .eq('id', staff.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        // Create new staff record for the user
+        const { error } = await supabase
+          .from('staff')
+          .insert({
+            user_id: user.id,
+            name: profileData.name,
+            email: user.email || '',
+            phone: profileData.phone || null,
+            specialization: profileData.specialization || null,
+            photo_url: profileData.photo_url || null,
+            role: 'receptionist', // Default role
+            is_active: true,
+          });
+
+        if (error) throw error;
+      }
 
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully.",
       });
+      
+      // Refresh the page to reload staff data
+      window.location.reload();
     } catch (error: any) {
       toast({
         title: "Error",
