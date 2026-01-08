@@ -26,7 +26,7 @@ interface MemberWithMembership {
   email: string | null;
   membershipStartDate: string;
   membershipEndDate: string;
-  attendanceStatus: 'present' | 'absent' | 'not_marked' | null;
+  attendanceStatus: 'present' | 'absent' | 'not_marked';
   attendanceId: string | null;
   notes: string | null;
 }
@@ -38,7 +38,7 @@ interface StaffWithAttendance {
   phone: string | null;
   role: string;
   joiningDate: string | null;
-  attendanceStatus: 'present' | 'absent' | 'not_marked' | null;
+  attendanceStatus: 'present' | 'absent' | 'not_marked';
   attendanceId: string | null;
   notes: string | null;
 }
@@ -64,6 +64,7 @@ export default function ManageAttendance() {
   const fetchMembersWithAttendance = async () => {
     setIsLoading(true);
     try {
+      // Fetch all active members with active memberships
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select(`
@@ -89,15 +90,13 @@ export default function ManageAttendance() {
       }
 
       const memberIds = membersData.map((m) => m.id);
-      const dateStart = `${selectedDate}T00:00:00`;
-      const dateEnd = `${selectedDate}T23:59:59`;
 
+      // Fetch daily attendance for the selected date
       const { data: attendanceData, error: attendanceError } = await supabase
-        .from('member_attendance')
+        .from('daily_attendance')
         .select('*')
         .in('member_id', memberIds)
-        .gte('check_in_time', dateStart)
-        .lte('check_in_time', dateEnd);
+        .eq('date', selectedDate);
 
       if (attendanceError) throw attendanceError;
 
@@ -114,18 +113,11 @@ export default function ManageAttendance() {
         const selectedDateObj = parseISO(selectedDate);
         const isDateBeforeMembership = selectedDateObj < startOfDay(membershipStart);
 
-        let attendanceStatus: MemberWithMembership['attendanceStatus'] = null;
+        // Use the status directly from the database, default to 'not_marked'
+        let attendanceStatus: MemberWithMembership['attendanceStatus'] = 'not_marked';
         
-        if (isDateBeforeMembership) {
-          attendanceStatus = null;
-        } else if (attendance) {
-          if (attendance.notes?.includes('automatic system update') || attendance.notes?.includes('Marked absent')) {
-            attendanceStatus = 'absent';
-          } else {
-            attendanceStatus = 'present';
-          }
-        } else {
-          attendanceStatus = 'not_marked';
+        if (!isDateBeforeMembership && attendance) {
+          attendanceStatus = attendance.status as 'present' | 'absent' | 'not_marked';
         }
 
         return {
@@ -185,11 +177,9 @@ export default function ManageAttendance() {
         const selectedDateObj = parseISO(selectedDate);
         const isBeforeJoining = joiningDate ? selectedDateObj < startOfDay(joiningDate) : false;
 
-        let attendanceStatus: StaffWithAttendance['attendanceStatus'] = null;
+        let attendanceStatus: StaffWithAttendance['attendanceStatus'] = 'not_marked';
         
-        if (isBeforeJoining) {
-          attendanceStatus = null;
-        } else if (attendance) {
+        if (!isBeforeJoining && attendance) {
           if (attendance.notes?.includes('automatic system update') || attendance.notes?.includes('Marked absent')) {
             attendanceStatus = 'absent';
           } else if (attendance.in_time) {
@@ -197,8 +187,6 @@ export default function ManageAttendance() {
           } else {
             attendanceStatus = 'absent';
           }
-        } else {
-          attendanceStatus = 'not_marked';
         }
 
         return {
@@ -242,34 +230,23 @@ export default function ManageAttendance() {
     setIsSaving(memberId);
     try {
       if (member.attendanceId) {
-        if (status === 'absent') {
-          const { error } = await supabase
-            .from('member_attendance')
-            .update({
-              notes: 'Marked absent by staff',
-              check_out_time: new Date(`${selectedDate}T00:00:01`).toISOString(),
-            })
-            .eq('id', member.attendanceId);
+        // Update existing attendance record
+        const { error } = await supabase
+          .from('daily_attendance')
+          .update({
+            status,
+            notes: `Marked ${status} by staff`,
+          })
+          .eq('id', member.attendanceId);
 
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from('member_attendance')
-            .update({
-              notes: null,
-              check_out_time: null,
-            })
-            .eq('id', member.attendanceId);
-
-          if (error) throw error;
-        }
+        if (error) throw error;
       } else {
-        const checkInTime = new Date(`${selectedDate}T09:00:00`).toISOString();
-        const { error } = await supabase.from('member_attendance').insert({
+        // Insert new attendance record
+        const { error } = await supabase.from('daily_attendance').insert({
           member_id: memberId,
-          check_in_time: checkInTime,
-          notes: status === 'absent' ? 'Marked absent by staff' : null,
-          check_out_time: status === 'absent' ? new Date(`${selectedDate}T09:00:01`).toISOString() : null,
+          date: selectedDate,
+          status,
+          notes: `Marked ${status} by staff`,
         });
 
         if (error) throw error;
@@ -374,12 +351,12 @@ export default function ManageAttendance() {
       try {
         const insertData = unmarkedMembers.map((m) => ({
           member_id: m.id,
-          check_in_time: new Date(`${selectedDate}T00:00:00`).toISOString(),
-          check_out_time: new Date(`${selectedDate}T00:00:01`).toISOString(),
+          date: selectedDate,
+          status: 'absent' as const,
           notes: 'Marked absent - automatic system update',
         }));
 
-        const { error } = await supabase.from('member_attendance').insert(insertData);
+        const { error } = await supabase.from('daily_attendance').insert(insertData);
 
         if (error) throw error;
 
@@ -508,7 +485,6 @@ export default function ManageAttendance() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                max={format(new Date(), 'yyyy-MM-dd')}
               />
               {isFutureDate && (
                 <p className="text-sm text-destructive">Cannot mark attendance for future dates</p>
