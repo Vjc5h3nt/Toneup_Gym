@@ -308,17 +308,17 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue Trend</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Revenue Trend</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-2 sm:p-6">
+            <div className="h-[200px] sm:h-[300px]">
               {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueData}>
+                  <AreaChart data={revenueData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(24, 95%, 53%)" stopOpacity={0.3} />
@@ -326,13 +326,14 @@ export default function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                    <YAxis className="text-xs" tick={{ fontSize: 10 }} />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                    <YAxis className="text-xs" tick={{ fontSize: 9 }} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}k`} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        fontSize: '12px',
                       }}
                       formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Revenue']}
                     />
@@ -349,23 +350,24 @@ export default function Dashboard() {
         </Card>
 
         {/* Attendance Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Check-ins</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Daily Check-ins</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-2 sm:p-6">
+            <div className="h-[200px] sm:h-[300px]">
               {attendanceData.some((d) => d.count > 0) ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={attendanceData}>
+                  <BarChart data={attendanceData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-                    <YAxis className="text-xs" tick={{ fontSize: 10 }} />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                    <YAxis className="text-xs" tick={{ fontSize: 9 }} />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        fontSize: '12px',
                       }}
                       formatter={(value: number) => [value, 'Check-ins']}
                     />
@@ -383,14 +385,14 @@ export default function Dashboard() {
       </div>
 
       {/* Charts Row 2 */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         {/* Lead Sources */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Lead Sources</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Lead Sources</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-2 sm:p-6">
+            <div className="h-[200px] sm:h-[300px]">
               {sourceData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -398,11 +400,11 @@ export default function Dashboard() {
                       data={sourceData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
+                      innerRadius={40}
+                      outerRadius={70}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={false}
                     >
                       {sourceData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -413,7 +415,9 @@ export default function Dashboard() {
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        fontSize: '12px',
                       }}
+                      formatter={(value: number, name: string) => [value, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -423,16 +427,27 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            {/* Legend for mobile */}
+            {sourceData.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mt-2 sm:hidden">
+                {sourceData.map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-1 text-xs">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         {/* Membership Types */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Membership Distribution</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Membership Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-2 sm:p-6">
+            <div className="h-[200px] sm:h-[300px]">
               {membershipData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -440,11 +455,11 @@ export default function Dashboard() {
                       data={membershipData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
+                      innerRadius={40}
+                      outerRadius={70}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                      labelLine={false}
                     >
                       {membershipData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
@@ -455,7 +470,9 @@ export default function Dashboard() {
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        fontSize: '12px',
                       }}
+                      formatter={(value: number, name: string) => [value, name]}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -465,12 +482,23 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+            {/* Legend for mobile */}
+            {membershipData.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mt-2 sm:hidden">
+                {membershipData.map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-1 text-xs">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[(index + 2) % COLORS.length] }} />
+                    <span>{item.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Activity and Follow-ups */}
-      <div className="grid gap-6 lg:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <RecentActivity />
         <UpcomingFollowUps />
         <ExpiringMemberships />

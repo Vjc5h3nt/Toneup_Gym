@@ -92,80 +92,80 @@ export function MemberStatistics() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Users className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-primary/10 p-2 sm:p-3">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.totalMembers || 0}</p>
-                <p className="text-sm text-muted-foreground">Total Members</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.totalMembers || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Members</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-green-500/10 p-3">
-                <UserCheck className="h-6 w-6 text-green-500" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-green-500/10 p-2 sm:p-3">
+                <UserCheck className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.activeMembers || 0}</p>
-                <p className="text-sm text-muted-foreground">Active Members</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.activeMembers || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Active</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-red-500/10 p-3">
-                <UserX className="h-6 w-6 text-red-500" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-red-500/10 p-2 sm:p-3">
+                <UserX className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.inactiveMembers || 0}</p>
-                <p className="text-sm text-muted-foreground">Inactive Members</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.inactiveMembers || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Inactive</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-accent/10 p-3">
-                <Activity className="h-6 w-6 text-accent" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-accent/10 p-2 sm:p-3">
+                <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-xl sm:text-2xl font-bold">
                   {stats?.totalMembers ? Math.round((stats.activeMembers / stats.totalMembers) * 100) : 0}%
                 </p>
-                <p className="text-sm text-muted-foreground">Active Rate</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Active Rate</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Membership Types</CardTitle>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Membership Types</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
+          <CardContent className="p-2 sm:p-6">
+            <ChartContainer config={chartConfig} className="h-[180px] sm:h-[250px] w-full">
               <PieChart>
                 <Pie
                   data={stats?.membershipTypes || []}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={35}
+                  outerRadius={60}
                   paddingAngle={5}
                   dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={false}
                 >
                   {stats?.membershipTypes?.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -174,18 +174,29 @@ export function MemberStatistics() {
                 <ChartTooltip content={<ChartTooltipContent />} />
               </PieChart>
             </ChartContainer>
+            {/* Legend for mobile */}
+            {stats?.membershipTypes && stats.membershipTypes.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mt-2 sm:hidden">
+                {stats.membershipTypes.map((item, index) => (
+                  <div key={item.name} className="flex items-center gap-1 text-xs">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                    <span>{item.name}: {item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Membership Status</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Membership Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart data={stats?.membershipStatus || []} layout="vertical" margin={{ left: 80 }}>
-                <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} />
+          <CardContent className="p-2 sm:p-6">
+            <ChartContainer config={chartConfig} className="h-[180px] sm:h-[250px] w-full">
+              <BarChart data={stats?.membershipStatus || []} layout="vertical" margin={{ left: 60, right: 10, top: 5, bottom: 5 }}>
+                <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={55} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
               </BarChart>
