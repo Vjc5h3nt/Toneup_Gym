@@ -16,6 +16,9 @@ import { Plus, Search, User, Users, UserCheck, UserX, Filter } from 'lucide-reac
 import { toast } from 'sonner';
 import MemberProfileSheet from '@/components/members/MemberProfileSheet';
 import AddMemberDialog from '@/components/members/AddMemberDialog';
+import { MembersEmptyState, SearchEmptyState, FilterEmptyState } from '@/components/common/EmptyState';
+import { MemberCardSkeleton, StatCardSkeleton, GridSkeleton } from '@/components/common/LoadingSkeleton';
+import { PageTransition } from '@/components/common/PageTransition';
 
 interface MemberWithMembership extends Member {
   memberships?: { status: string; type: string; end_date: string }[];
@@ -79,7 +82,7 @@ export default function Members() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageTransition className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Members</h1>
@@ -166,26 +169,15 @@ export default function Members() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 w-32 rounded bg-muted mb-2" />
-                <div className="h-3 w-24 rounded bg-muted" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <GridSkeleton count={6} SkeletonComponent={MemberCardSkeleton} />
+      ) : members.length === 0 ? (
+        <MembersEmptyState onAdd={() => setAddOpen(true)} />
       ) : filteredMembers.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              {members.length === 0
-                ? 'No members found. Add your first member to get started!'
-                : 'No members match your filters.'}
-            </p>
-          </CardContent>
-        </Card>
+        search ? (
+          <SearchEmptyState searchTerm={search} />
+        ) : (
+          <FilterEmptyState onClear={() => setStatusFilter('all')} />
+        )
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredMembers.map((member) => {
@@ -243,6 +235,6 @@ export default function Members() {
       />
 
       <AddMemberDialog open={addOpen} onOpenChange={setAddOpen} onSuccess={fetchMembers} />
-    </div>
+    </PageTransition>
   );
 }
