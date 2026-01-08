@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lead } from '@/types/database';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,10 +20,19 @@ import AddLeadDialog from '@/components/leads/AddLeadDialog';
 import { LeadsEmptyState, SearchEmptyState, FilterEmptyState } from '@/components/common/EmptyState';
 import { LeadCardSkeleton, GridSkeleton } from '@/components/common/LoadingSkeleton';
 import { PageTransition } from '@/components/common/PageTransition';
+import { Pagination, InfiniteScrollLoader, InfiniteScrollSentinel } from '@/components/common/Pagination';
+import { useDebounce } from '@/hooks/useDebounce';
+import { usePagination } from '@/hooks/usePagination';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { fuzzySearch } from '@/lib/fuzzySearch';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const statusColors: Record<string, string> = {
   new: 'bg-info text-info-foreground',
   contacted: 'bg-warning text-warning-foreground',
+  hot: 'bg-destructive text-destructive-foreground',
+  warm: 'bg-warning text-warning-foreground',
+  cold: 'bg-muted text-muted-foreground',
   converted: 'bg-success text-success-foreground',
   lost: 'bg-muted text-muted-foreground',
 };
@@ -31,6 +40,9 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   new: 'New',
   contacted: 'Contacted',
+  hot: 'Hot 🔥',
+  warm: 'Warm',
+  cold: 'Cold',
   converted: 'Converted ✓',
   lost: 'Lost',
 };
@@ -43,6 +55,9 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+
+  const isMobile = useIsMobile();
+  const debouncedSearch = useDebounce(search, 300);
 
   useEffect(() => {
     fetchLeads();
@@ -62,14 +77,43 @@ export default function Leads() {
     setIsLoading(false);
   };
 
-  const filteredLeads = leads.filter((lead) => {
-    const matchesSearch =
-      lead.name.toLowerCase().includes(search.toLowerCase()) ||
-      lead.phone.includes(search) ||
-      lead.email?.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  // Filter and search with fuzzy matching
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter((lead) => lead.status === statusFilter);
+    }
+
+    // Fuzzy search
+    if (debouncedSearch.trim()) {
+      result = fuzzySearch(result, debouncedSearch, (lead) => [
+        lead.name,
+        lead.phone,
+        lead.email || '',
+      ]);
+    }
+
+    return result;
+  }, [leads, statusFilter, debouncedSearch]);
+
+  // Pagination for desktop
+  const pagination = usePagination<Lead>({
+    totalItems: filteredLeads.length,
+    initialPageSize: 12,
   });
+
+  // Infinite scroll for mobile
+  const infiniteScroll = useInfiniteScroll(filteredLeads, {
+    initialItemsPerPage: 12,
+    enabled: isMobile,
+  });
+
+  // Get items to display based on device
+  const displayedLeads = isMobile
+    ? infiniteScroll.displayedItems
+    : pagination.paginateData(filteredLeads);
 
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
@@ -79,6 +123,12 @@ export default function Leads() {
   const handleUpdate = () => {
     fetchLeads();
   };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    pagination.setPage(1);
+    infiniteScroll.reset();
+  }, [debouncedSearch, statusFilter]);
 
   return (
     <PageTransition className="space-y-6">
@@ -113,11 +163,19 @@ export default function Leads() {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="contacted">Contacted</SelectItem>
+              <SelectItem value="hot">Hot</SelectItem>
+              <SelectItem value="warm">Warm</SelectItem>
+              <SelectItem value="cold">Cold</SelectItem>
               <SelectItem value="converted">Converted</SelectItem>
               <SelectItem value="lost">Lost</SelectItem>
             </SelectContent>
           </Select>
         </div>
+        {debouncedSearch && (
+          <p className="text-sm text-muted-foreground">
+            Found {filteredLeads.length} result{filteredLeads.length !== 1 ? 's' : ''}
+          </p>
+        )}
       </div>
 
       {/* Stats Summary */}
@@ -154,41 +212,69 @@ export default function Leads() {
           <FilterEmptyState onClear={() => setStatusFilter('all')} />
         )
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredLeads.map((lead) => (
-            <Card
-              key={lead.id}
-              className="transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
-              onClick={() => handleLeadClick(lead)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg">{lead.name}</CardTitle>
-                  <Badge className={statusColors[lead.status]}>
-                    {statusLabels[lead.status]}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className="text-sm text-muted-foreground">{lead.phone}</p>
-                {lead.email && (
-                  <p className="text-sm text-muted-foreground truncate">{lead.email}</p>
-                )}
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-xs text-muted-foreground capitalize">
-                    {lead.source?.replace('_', ' ')}
-                  </p>
-                  {lead.next_follow_up && (
-                    <div className="flex items-center gap-1 text-xs text-primary">
-                      <Calendar className="h-3 w-3" />
-                      {format(new Date(lead.next_follow_up), 'MMM d')}
-                    </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {displayedLeads.map((lead) => (
+              <Card
+                key={lead.id}
+                className="transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
+                onClick={() => handleLeadClick(lead)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg">{lead.name}</CardTitle>
+                    <Badge className={statusColors[lead.status || 'new']}>
+                      {statusLabels[lead.status || 'new']}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-muted-foreground">{lead.phone}</p>
+                  {lead.email && (
+                    <p className="text-sm text-muted-foreground truncate">{lead.email}</p>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {lead.source?.replace('_', ' ')}
+                    </p>
+                    {lead.next_follow_up && (
+                      <div className="flex items-center gap-1 text-xs text-primary">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(lead.next_follow_up), 'MMM d')}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Infinite scroll for mobile */}
+          {isMobile && (
+            <>
+              <InfiniteScrollSentinel
+                sentinelRef={infiniteScroll.sentinelRef}
+                hasMore={infiniteScroll.hasMore}
+              />
+              <InfiniteScrollLoader isLoading={infiniteScroll.isLoading} />
+            </>
+          )}
+
+          {/* Pagination for desktop */}
+          {!isMobile && filteredLeads.length > 12 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              pageSize={pagination.pageSize}
+              totalItems={filteredLeads.length}
+              hasPreviousPage={pagination.hasPreviousPage}
+              hasNextPage={pagination.hasNextPage}
+              pageRange={pagination.pageRange}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.setPageSize}
+            />
+          )}
+        </>
       )}
 
       <LeadDetailDialog
