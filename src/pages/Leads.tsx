@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import LeadDetailDialog from '@/components/leads/LeadDetailDialog';
 import AddLeadDialog from '@/components/leads/AddLeadDialog';
+import { LeadsEmptyState, SearchEmptyState, FilterEmptyState } from '@/components/common/EmptyState';
+import { LeadCardSkeleton, GridSkeleton } from '@/components/common/LoadingSkeleton';
+import { PageTransition } from '@/components/common/PageTransition';
 
 const statusColors: Record<string, string> = {
   new: 'bg-info text-info-foreground',
@@ -78,7 +81,7 @@ export default function Leads() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageTransition className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Leads</h1>
@@ -141,26 +144,15 @@ export default function Leads() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 w-32 rounded bg-muted mb-2" />
-                <div className="h-3 w-24 rounded bg-muted" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <GridSkeleton count={6} SkeletonComponent={LeadCardSkeleton} />
+      ) : leads.length === 0 ? (
+        <LeadsEmptyState onAdd={() => setAddOpen(true)} />
       ) : filteredLeads.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground">
-              {leads.length === 0
-                ? 'No leads found. Add your first lead to get started!'
-                : 'No leads match your filters.'}
-            </p>
-          </CardContent>
-        </Card>
+        search ? (
+          <SearchEmptyState searchTerm={search} />
+        ) : (
+          <FilterEmptyState onClear={() => setStatusFilter('all')} />
+        )
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredLeads.map((lead) => (
@@ -207,6 +199,6 @@ export default function Leads() {
       />
 
       <AddLeadDialog open={addOpen} onOpenChange={setAddOpen} onSuccess={handleUpdate} />
-    </div>
+    </PageTransition>
   );
 }

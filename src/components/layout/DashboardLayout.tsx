@@ -40,6 +40,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { SessionTimeout } from '@/components/common/SessionTimeout';
+import { MobileBottomNav } from '@/components/common/MobileNav';
+import { DashboardFAB } from '@/components/common/FloatingActionButton';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -332,10 +335,19 @@ export function DashboardLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-4 pb-20 lg:p-6 lg:pb-6">
           <Outlet />
         </main>
+        
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
+        
+        {/* Floating Action Button for Mobile */}
+        <DashboardFAB />
       </div>
+      
+      {/* Session Timeout Warning */}
+      <SessionTimeout />
     </div>
   );
 }
