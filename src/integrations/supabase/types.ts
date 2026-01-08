@@ -52,6 +52,54 @@ export type Database = {
           },
         ]
       }
+      daily_attendance: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          marked_by: string | null
+          member_id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          marked_by?: string | null
+          member_id: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          marked_by?: string | null
+          member_id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_attendance_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_attendance_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_follow_ups: {
         Row: {
           created_at: string
