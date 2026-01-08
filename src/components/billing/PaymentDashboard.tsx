@@ -84,30 +84,33 @@ export default function PaymentDashboard() {
     },
   });
 
-  // Fetch outstanding dues (active memberships with no payment in last 30 days)
+  // Fetch outstanding dues - memberships where total paid < price
   const { data: outstandingDues, isLoading: isLoadingDues } = useQuery({
     queryKey: ['outstanding-dues'],
     queryFn: async () => {
-      // Get all active memberships
+      // Get all active memberships (not cancelled/expired)
       const { data: memberships, error: memError } = await supabase
         .from('memberships')
         .select(`
           id,
           member_id,
           price,
+          start_date,
           end_date,
           type,
+          status,
           member:members(id, name, phone)
         `)
-        .eq('status', 'active');
+        .in('status', ['active', 'frozen', 'hold']);
       
       if (memError) throw memError;
+      if (!memberships?.length) return [];
       
-      // Get payments for these memberships
+      // Get all payments for these memberships
       const { data: payments, error: payError } = await supabase
         .from('payments')
-        .select('membership_id, amount')
-        .in('membership_id', memberships?.map(m => m.id) || []);
+        .select('membership_id, amount, payment_date')
+        .in('membership_id', memberships.map(m => m.id));
       
       if (payError) throw payError;
       
@@ -120,14 +123,28 @@ export default function PaymentDashboard() {
       });
       
       // Find memberships with outstanding balance
-      const withDues = memberships?.filter(m => {
-        const paid = paymentTotals[m.id] || 0;
-        return paid < Number(m.price);
-      }).map(m => ({
-        ...m,
-        paid: paymentTotals[m.id] || 0,
-        due: Number(m.price) - (paymentTotals[m.id] || 0),
-      })) || [];
+      const today = new Date();
+      const withDues = memberships
+        .filter(m => {
+          const paid = paymentTotals[m.id] || 0;
+          return paid < Number(m.price);
+        })
+        .map(m => {
+          const paid = paymentTotals[m.id] || 0;
+          const dueAmount = Number(m.price) - paid;
+          const endDate = parseISO(m.end_date);
+          const daysUntilDue = differenceInDays(endDate, today);
+          
+          return {
+            ...m,
+            paid,
+            due: dueAmount,
+            dueDate: m.end_date,
+            daysUntilDue,
+            isOverdue: daysUntilDue < 0,
+          };
+        })
+        .sort((a, b) => a.daysUntilDue - b.daysUntilDue); // Sort by urgency
       
       return withDues;
     },
@@ -308,7 +325,7 @@ export default function PaymentDashboard() {
               <AlertTriangle className="h-5 w-5 text-warning" />
               Outstanding Dues
             </CardTitle>
-            <CardDescription>Members with pending payments</CardDescription>
+            <CardDescription>Members with pending payments sorted by urgency</CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[300px]">
@@ -316,19 +333,32 @@ export default function PaymentDashboard() {
                 {outstandingDues.map((due) => (
                   <div
                     key={due.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      due.isOverdue ? 'border-destructive bg-destructive/5' : 'bg-card'
+                    }`}
                   >
                     <div>
                       <p className="font-medium">{(due.member as any)?.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {(due.member as any)?.phone}
                       </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {due.isOverdue ? (
+                          <Badge variant="destructive" className="text-xs">
+                            Overdue by {Math.abs(due.daysUntilDue)} days
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            Due: {format(parseISO(due.dueDate), 'dd MMM yyyy')}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <Badge variant="outline" className="mb-1">
                         Paid: ₹{due.paid.toLocaleString()}
                       </Badge>
-                      <p className="text-lg font-semibold text-warning">
+                      <p className={`text-lg font-semibold ${due.isOverdue ? 'text-destructive' : 'text-warning'}`}>
                         Due: ₹{due.due.toLocaleString()}
                       </p>
                     </div>
