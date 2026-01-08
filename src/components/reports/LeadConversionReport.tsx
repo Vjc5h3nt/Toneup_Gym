@@ -117,77 +117,77 @@ export function LeadConversionReport() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-primary/10 p-3">
-                <UserPlus className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-primary/10 p-2 sm:p-3">
+                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.totalLeads || 0}</p>
-                <p className="text-sm text-muted-foreground">Total Leads</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.totalLeads || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Leads</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-green-500/10 p-3">
-                <Users className="h-6 w-6 text-green-500" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-green-500/10 p-2 sm:p-3">
+                <Users className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.convertedLeads || 0}</p>
-                <p className="text-sm text-muted-foreground">Converted</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.convertedLeads || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Converted</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-yellow-500/10 p-3">
-                <Target className="h-6 w-6 text-yellow-500" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-yellow-500/10 p-2 sm:p-3">
+                <Target className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.activeLeads || 0}</p>
-                <p className="text-sm text-muted-foreground">Active Leads</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.activeLeads || 0}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Active</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="rounded-full bg-accent/10 p-3">
-                <TrendingUp className="h-6 w-6 text-accent" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="rounded-full bg-accent/10 p-2 sm:p-3">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats?.conversionRate || 0}%</p>
-                <p className="text-sm text-muted-foreground">Conversion Rate</p>
+                <p className="text-xl sm:text-2xl font-bold">{stats?.conversionRate || 0}%</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Rate</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Lead Status Distribution</CardTitle>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Lead Status Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
+          <CardContent className="p-2 sm:p-6">
+            <ChartContainer config={chartConfig} className="h-[180px] sm:h-[250px] w-full">
               <PieChart>
                 <Pie
                   data={stats?.statusStats || []}
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  outerRadius={60}
                   paddingAngle={2}
                   dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
+                  labelLine={false}
                 >
                   {stats?.statusStats?.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -196,18 +196,29 @@ export function LeadConversionReport() {
                 <ChartTooltip content={<ChartTooltipContent />} />
               </PieChart>
             </ChartContainer>
+            {/* Legend for mobile */}
+            {stats?.statusStats && stats.statusStats.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 mt-2 sm:hidden">
+                {stats.statusStats.map((item) => (
+                  <div key={item.name} className="flex items-center gap-1 text-xs">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.fill }} />
+                    <span>{item.name}: {item.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Lead Sources</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Lead Sources</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <BarChart data={stats?.sourceStats || []} layout="vertical" margin={{ left: 80 }}>
-                <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} />
+          <CardContent className="p-2 sm:p-6">
+            <ChartContainer config={chartConfig} className="h-[180px] sm:h-[250px] w-full">
+              <BarChart data={stats?.sourceStats || []} layout="vertical" margin={{ left: 60, right: 10, top: 5, bottom: 5 }}>
+                <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} width={55} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="value" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
               </BarChart>

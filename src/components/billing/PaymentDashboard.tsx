@@ -183,13 +183,13 @@ export default function PaymentDashboard() {
   return (
     <div className="space-y-6">
       {/* Stats Row */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">This Month</p>
-                <p className="text-2xl font-bold">₹{currentMonth.toLocaleString()}</p>
+                <p className="text-xl sm:text-2xl font-bold">₹{currentMonth.toLocaleString()}</p>
                 <div className="flex items-center gap-1 mt-1">
                   {isPositive ? (
                     <TrendingUp className="h-4 w-4 text-success" />
@@ -199,11 +199,11 @@ export default function PaymentDashboard() {
                   <span className={`text-sm ${isPositive ? 'text-success' : 'text-destructive'}`}>
                     {isPositive ? '+' : ''}{percentChange.toFixed(1)}%
                   </span>
-                  <span className="text-sm text-muted-foreground">vs last month</span>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">vs last month</span>
                 </div>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-primary" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -214,13 +214,13 @@ export default function PaymentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Last Month</p>
-                <p className="text-2xl font-bold">₹{previousMonth.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xl sm:text-2xl font-bold">₹{previousMonth.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
                   {monthlyRevenue?.[monthlyRevenue.length - 2]?.fullMonth}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                <Wallet className="h-6 w-6 text-muted-foreground" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-muted flex items-center justify-center">
+                <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
               </div>
             </div>
           </CardContent>
@@ -231,13 +231,13 @@ export default function PaymentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Outstanding Dues</p>
-                <p className="text-2xl font-bold text-warning">₹{totalOutstanding.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xl sm:text-2xl font-bold text-warning">₹{totalOutstanding.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   {outstandingDues?.length || 0} member{outstandingDues?.length !== 1 ? 's' : ''}
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-warning" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-warning" />
               </div>
             </div>
           </CardContent>
@@ -245,21 +245,21 @@ export default function PaymentDashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
         {/* Monthly Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               Monthly Revenue
             </CardTitle>
-            <CardDescription>Last 6 months comparison</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Last 6 months comparison</CardDescription>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[280px] w-full">
-              <BarChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`} />
+          <CardContent className="p-2 sm:p-6">
+            <ChartContainer config={chartConfig} className="h-[200px] sm:h-[280px] w-full">
+              <BarChart data={monthlyRevenue} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
                 <ChartTooltip 
                   content={<ChartTooltipContent formatter={(value) => [`₹${Number(value).toLocaleString()}`, 'Revenue']} />} 
                 />
@@ -270,46 +270,47 @@ export default function PaymentDashboard() {
         </Card>
 
         {/* Payment Method Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
               Payment Methods
             </CardTitle>
-            <CardDescription>Current month breakdown</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Current month breakdown</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6">
             {isLoadingMethods ? (
-              <Skeleton className="h-[280px] w-full" />
+              <Skeleton className="h-[200px] sm:h-[280px] w-full" />
             ) : paymentMethods && paymentMethods.length > 0 ? (
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={paymentMethods}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {paymentMethods.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={PAYMENT_METHOD_COLORS[entry.method as keyof typeof PAYMENT_METHOD_COLORS] || 'hsl(var(--muted))'} 
-                        />
-                      ))}
-                    </Pie>
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <div className="h-[180px] sm:h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentMethods}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="value"
+                        nameKey="name"
+                        labelLine={false}
+                      >
+                        {paymentMethods.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={PAYMENT_METHOD_COLORS[entry.method as keyof typeof PAYMENT_METHOD_COLORS] || 'hsl(var(--muted))'} 
+                          />
+                        ))}
+                      </Pie>
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
+              <div className="h-[200px] sm:h-[280px] flex items-center justify-center text-muted-foreground">
                 No payments this month
               </div>
             )}

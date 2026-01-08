@@ -63,11 +63,11 @@ export function RevenueChart() {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
-          <CardTitle>Revenue Overview</CardTitle>
-          <p className="text-sm text-muted-foreground">Last 6 months</p>
+          <CardTitle className="text-base sm:text-lg">Revenue Overview</CardTitle>
+          <p className="text-xs sm:text-sm text-muted-foreground">Last 6 months</p>
         </div>
         <div className="flex items-center gap-2">
           {isPositive ? (
@@ -80,11 +80,11 @@ export function RevenueChart() {
           </span>
         </div>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart data={revenueData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-            <XAxis dataKey="month" tickLine={false} axisLine={false} />
-            <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+      <CardContent className="p-2 sm:p-6">
+        <ChartContainer config={chartConfig} className="h-[200px] sm:h-[300px] w-full">
+          <BarChart data={revenueData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+            <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₹${(value/1000).toFixed(0)}k`} tick={{ fontSize: 9 }} />
             <ChartTooltip 
               content={<ChartTooltipContent formatter={(value) => [`₹${value}`, 'Revenue']} />} 
             />

@@ -450,57 +450,57 @@ export default function AttendanceReport() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {activeTab === 'staff' ? (
           <>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <UsersRound className="h-5 w-5 text-blue-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10">
+                    <UsersRound className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Staff Members</p>
-                    <p className="text-2xl font-bold">{filteredStaffData.length}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Staff</p>
+                    <p className="text-lg sm:text-2xl font-bold">{filteredStaffData.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <Calendar className="h-5 w-5 text-green-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Present Days</p>
-                    <p className="text-2xl font-bold">{totalStaffPresent}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Present</p>
+                    <p className="text-lg sm:text-2xl font-bold">{totalStaffPresent}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-500/10">
-                    <Clock className="h-5 w-5 text-purple-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/10">
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Hours</p>
-                    <p className="text-2xl font-bold">{Math.round(totalStaffHours)}h</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Hours</p>
+                    <p className="text-lg sm:text-2xl font-bold">{Math.round(totalStaffHours)}h</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-orange-500/10">
-                    <TrendingUp className="h-5 w-5 text-orange-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-orange-500/10">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Hours/Person</p>
-                    <p className="text-2xl font-bold">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Avg/Person</p>
+                    <p className="text-lg sm:text-2xl font-bold">
                       {filteredStaffData.length > 0
                         ? Math.round(totalStaffHours / filteredStaffData.length)
                         : 0}h
@@ -513,53 +513,53 @@ export default function AttendanceReport() {
         ) : (
           <>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Users className="h-5 w-5 text-blue-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-blue-500/10">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Active Members</p>
-                    <p className="text-2xl font-bold">{filteredMemberData.length}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Members</p>
+                    <p className="text-lg sm:text-2xl font-bold">{filteredMemberData.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <Calendar className="h-5 w-5 text-green-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-green-500/10">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Visits</p>
-                    <p className="text-2xl font-bold">{totalMemberVisits}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Visits</p>
+                    <p className="text-lg sm:text-2xl font-bold">{totalMemberVisits}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-purple-500/10">
-                    <Clock className="h-5 w-5 text-purple-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-purple-500/10">
+                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Hours</p>
-                    <p className="text-2xl font-bold">{Math.round(totalMemberHours)}h</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Hours</p>
+                    <p className="text-lg sm:text-2xl font-bold">{Math.round(totalMemberHours)}h</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-orange-500/10">
-                    <TrendingUp className="h-5 w-5 text-orange-600" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 rounded-lg bg-orange-500/10">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Visits/Member</p>
-                    <p className="text-2xl font-bold">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Avg Visits</p>
+                    <p className="text-lg sm:text-2xl font-bold">
                       {filteredMemberData.length > 0
                         ? Math.round(totalMemberVisits / filteredMemberData.length)
                         : 0}
@@ -573,31 +573,33 @@ export default function AttendanceReport() {
       </div>
 
       {/* Tabs and Data */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle>Attendance Details</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 pb-4">
+          <CardTitle className="text-base sm:text-lg">Attendance Details</CardTitle>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => exportToCSV(activeTab as 'staff' | 'member')}
+              className="text-xs sm:text-sm"
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              <FileSpreadsheet className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               CSV
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => exportToPDF(activeTab as 'staff' | 'member')}
+              className="text-xs sm:text-sm"
             >
-              <FileText className="mr-2 h-4 w-4" />
+              <FileText className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               PDF
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-2 sm:p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 w-full sm:w-auto">
               <TabsTrigger value="staff" className="gap-2">
                 <UsersRound className="h-4 w-4" />
                 Staff Attendance
