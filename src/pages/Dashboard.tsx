@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, UserPlus, TrendingUp, DollarSign, UserCheck, UserX, Target, Activity } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { DateRangeFilter } from '@/components/dashboard/DateRangeFilter';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { TodaysBirthdays } from '@/components/dashboard/TodaysBirthdays';
 
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { UpcomingFollowUps } from '@/components/dashboard/UpcomingFollowUps';
@@ -21,6 +23,14 @@ interface DashboardStats {
   conversionRate: number;
 }
 
+interface PreviousPeriodStats {
+  totalMembers: number;
+  activeMembers: number;
+  totalLeads: number;
+  totalRevenue: number;
+  conversions: number;
+}
+
 const COLORS = ['hsl(24, 95%, 53%)', 'hsl(174, 72%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(199, 89%, 48%)', 'hsl(280, 65%, 60%)'];
 
 export default function Dashboard() {
@@ -36,10 +46,18 @@ export default function Dashboard() {
     totalRevenue: 0,
     conversionRate: 0,
   });
+  const [previousStats, setPreviousStats] = useState<PreviousPeriodStats>({
+    totalMembers: 0,
+    activeMembers: 0,
+    totalLeads: 0,
+    totalRevenue: 0,
+    conversions: 0,
+  });
   const [revenueData, setRevenueData] = useState<{ date: string; amount: number }[]>([]);
   const [sourceData, setSourceData] = useState<{ name: string; value: number }[]>([]);
   const [membershipData, setMembershipData] = useState<{ name: string; value: number }[]>([]);
   const [attendanceData, setAttendanceData] = useState<{ date: string; count: number }[]>([]);
+  const [sparklineData, setSparklineData] = useState<Record<string, number[]>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   const handleDateChange = (start: Date, end: Date) => {
@@ -47,11 +65,23 @@ export default function Dashboard() {
     setEndDate(end);
   };
 
+  const calculateChange = (current: number, previous: number): number => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
       const startStr = format(startOfDay(startDate), 'yyyy-MM-dd');
       const endStr = format(endOfDay(endDate), 'yyyy-MM-dd');
+
+      // Calculate previous period
+      const periodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const prevStartDate = subDays(startDate, periodDays);
+      const prevEndDate = subDays(endDate, periodDays);
+      const prevStartStr = format(startOfDay(prevStartDate), 'yyyy-MM-dd');
+      const prevEndStr = format(endOfDay(prevEndDate), 'yyyy-MM-dd');
 
       const [
         { count: totalMembers },
@@ -64,6 +94,15 @@ export default function Dashboard() {
         { data: leadSources },
         { data: memberships },
         { data: attendance },
+        // Previous period data
+        { count: prevTotalMembers },
+        { count: prevActiveMembers },
+        { count: prevTotalLeads },
+        { count: prevConversions },
+        { data: prevPayments },
+        // Daily data for sparklines
+        { data: dailyMembers },
+        { data: dailyLeads },
       ] = await Promise.all([
         supabase.from('members').select('*', { count: 'exact', head: true }),
         supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -75,10 +114,20 @@ export default function Dashboard() {
         supabase.from('leads').select('source').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
         supabase.from('memberships').select('type, status'),
         supabase.from('member_attendance').select('check_in_time').gte('check_in_time', startStr).lte('check_in_time', endStr + 'T23:59:59'),
+        // Previous period queries
+        supabase.from('members').select('*', { count: 'exact', head: true }).lte('created_at', prevEndStr + 'T23:59:59'),
+        supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('status', 'active').lte('created_at', prevEndStr + 'T23:59:59'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59'),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('status', 'converted').gte('updated_at', prevStartStr).lte('updated_at', prevEndStr + 'T23:59:59'),
+        supabase.from('payments').select('amount, payment_date').gte('payment_date', prevStartStr).lte('payment_date', prevEndStr),
+        // Daily data for sparklines
+        supabase.from('members').select('created_at').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
+        supabase.from('leads').select('created_at').gte('created_at', startStr).lte('created_at', endStr + 'T23:59:59'),
       ]);
 
       // Calculate total revenue
       const totalRevenue = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const prevTotalRevenue = prevPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
       // Process revenue data by date
       const days = eachDayOfInterval({ start: startDate, end: endDate });
@@ -95,6 +144,29 @@ export default function Dashboard() {
         date: format(new Date(date), days.length > 14 ? 'MMM d' : 'EEE'),
         amount,
       }));
+
+      // Generate sparkline data
+      const membersByDate: Record<string, number> = {};
+      const leadsByDate: Record<string, number> = {};
+      days.forEach((d) => {
+        const key = format(d, 'yyyy-MM-dd');
+        membersByDate[key] = 0;
+        leadsByDate[key] = 0;
+      });
+      dailyMembers?.forEach((m) => {
+        const date = format(new Date(m.created_at), 'yyyy-MM-dd');
+        if (membersByDate[date] !== undefined) membersByDate[date]++;
+      });
+      dailyLeads?.forEach((l) => {
+        const date = format(new Date(l.created_at), 'yyyy-MM-dd');
+        if (leadsByDate[date] !== undefined) leadsByDate[date]++;
+      });
+
+      setSparklineData({
+        members: Object.values(membersByDate),
+        leads: Object.values(leadsByDate),
+        revenue: Object.values(revenueByDate),
+      });
 
       // Process lead sources
       const sourceCount: Record<string, number> = {};
@@ -147,6 +219,13 @@ export default function Dashboard() {
         totalRevenue,
         conversionRate,
       });
+      setPreviousStats({
+        totalMembers: prevTotalMembers || 0,
+        activeMembers: prevActiveMembers || 0,
+        totalLeads: prevTotalLeads || 0,
+        totalRevenue: prevTotalRevenue,
+        conversions: prevConversions || 0,
+      });
       setRevenueData(formattedRevenueData);
       setSourceData(formattedSourceData);
       setMembershipData(formattedMembershipData);
@@ -165,14 +244,14 @@ export default function Dashboard() {
   }, [fetchDashboardData]);
 
   const statCards = [
-    { title: 'Total Members', value: stats.totalMembers, icon: Users, color: 'text-primary' },
-    { title: 'Active Memberships', value: stats.activeMembers, icon: UserCheck, color: 'text-success' },
-    { title: 'Expired Memberships', value: stats.expiredMembers, icon: UserX, color: 'text-destructive' },
-    { title: 'Total Leads', value: stats.totalLeads, icon: UserPlus, color: 'text-info' },
-    { title: 'Hot Leads', value: stats.hotLeads, icon: Target, color: 'text-warning' },
-    { title: 'Conversions', value: stats.conversions, icon: TrendingUp, color: 'text-accent' },
-    { title: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-success' },
-    { title: 'Conversion Rate', value: `${stats.conversionRate.toFixed(1)}%`, icon: Activity, color: 'text-primary' },
+    { title: 'Total Members', value: stats.totalMembers, icon: Users, color: 'text-primary', link: '/dashboard/members', change: calculateChange(stats.totalMembers, previousStats.totalMembers), sparkline: sparklineData.members },
+    { title: 'Active Memberships', value: stats.activeMembers, icon: UserCheck, color: 'text-success', link: '/dashboard/members', change: calculateChange(stats.activeMembers, previousStats.activeMembers) },
+    { title: 'Expired Memberships', value: stats.expiredMembers, icon: UserX, color: 'text-destructive', link: '/dashboard/members' },
+    { title: 'Total Leads', value: stats.totalLeads, icon: UserPlus, color: 'text-info', link: '/dashboard/leads', change: calculateChange(stats.totalLeads, previousStats.totalLeads), sparkline: sparklineData.leads },
+    { title: 'Hot Leads', value: stats.hotLeads, icon: Target, color: 'text-warning', link: '/dashboard/leads' },
+    { title: 'Conversions', value: stats.conversions, icon: TrendingUp, color: 'text-accent', link: '/dashboard/leads', change: calculateChange(stats.conversions, previousStats.conversions) },
+    { title: 'Total Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-success', link: '/dashboard/reports?tab=revenue', change: calculateChange(stats.totalRevenue, previousStats.totalRevenue), sparkline: sparklineData.revenue },
+    { title: 'Conversion Rate', value: `${stats.conversionRate.toFixed(1)}%`, icon: Activity, color: 'text-primary', link: '/dashboard/reports?tab=leads' },
   ];
 
   if (isLoading) {
@@ -215,17 +294,16 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="transition-shadow hover:shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg sm:text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            color={stat.color}
+            link={stat.link}
+            change={stat.change}
+            sparklineData={stat.sparkline}
+          />
         ))}
       </div>
 
@@ -392,10 +470,11 @@ export default function Dashboard() {
       </div>
 
       {/* Activity and Follow-ups */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-4">
         <RecentActivity />
         <UpcomingFollowUps />
         <ExpiringMemberships />
+        <TodaysBirthdays />
       </div>
     </div>
   );

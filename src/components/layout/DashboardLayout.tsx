@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
+import { useNotificationGenerator } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -43,6 +44,7 @@ import {
 import { SessionTimeout } from '@/components/common/SessionTimeout';
 import { MobileBottomNav } from '@/components/common/MobileNav';
 import { DashboardFAB } from '@/components/common/FloatingActionButton';
+import { NotificationsBell } from '@/components/dashboard/NotificationsBell';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -80,6 +82,10 @@ export function DashboardLayout() {
   
   // Enable real-time notifications
   useRealtimeNotifications();
+  
+  // Generate notifications for follow-ups, birthdays, expiring memberships
+  useNotificationGenerator();
+  
   const navigate = useNavigate();
 
   // Auto-expand reports if on reports page
@@ -317,6 +323,9 @@ export function DashboardLayout() {
           </div>
 
           <div className="flex-1" />
+
+          {/* Notifications Bell */}
+          <NotificationsBell />
 
           {/* Dark mode toggle */}
           <Button
