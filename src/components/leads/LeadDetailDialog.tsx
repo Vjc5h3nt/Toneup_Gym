@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +24,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -59,6 +76,23 @@ const statusLabels: Record<string, string> = {
   lost: 'Lost',
 };
 
+const sources = [
+  { value: 'website', label: 'Website' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'qr', label: 'QR Code' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'other', label: 'Other' },
+];
+
+const interests = [
+  { value: 'normal', label: 'Regular Gym' },
+  { value: 'personal_training', label: 'Personal Training' },
+  { value: 'yoga', label: 'Yoga' },
+  { value: 'crossfit', label: 'CrossFit' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function LeadDetailDialog({
   lead,
   open,
@@ -73,7 +107,19 @@ export default function LeadDetailDialog({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNote, setEditNote] = useState('');
   const [editDate, setEditDate] = useState('');
-
+  
+  // Lead edit state
+  const [isEditingLead, setIsEditingLead] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [leadFormData, setLeadFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    source: 'walk_in' as string,
+    interest: 'normal' as string,
+    fitness_goal: '',
+    preferred_call_time: '',
+  });
   const fetchFollowUps = async (leadId: string) => {
     setIsLoading(true);
     const { data, error } = await supabase
@@ -92,16 +138,83 @@ export default function LeadDetailDialog({
     if (open && lead) {
       fetchFollowUps(lead.id);
       setFollowUpDate(lead.next_follow_up || '');
+      // Initialize lead form data
+      setLeadFormData({
+        name: lead.name || '',
+        phone: lead.phone || '',
+        email: lead.email || '',
+        source: lead.source || 'walk_in',
+        interest: lead.interest || 'normal',
+        fitness_goal: lead.fitness_goal || '',
+        preferred_call_time: lead.preferred_call_time || '',
+      });
+      setIsEditingLead(false);
     } else if (!open) {
       setFollowUps([]);
       setNewNote('');
       setFollowUpDate('');
       setEditingId(null);
+      setIsEditingLead(false);
     }
   }, [open, lead?.id]);
 
   const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setIsEditingLead(false);
+    }
     onOpenChange(isOpen);
+  };
+
+  const saveLeadEdit = async () => {
+    if (!lead) return;
+    if (!leadFormData.name.trim() || !leadFormData.phone.trim()) {
+      toast.error('Name and phone are required');
+      return;
+    }
+
+    setIsUpdating(true);
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        name: leadFormData.name.trim(),
+        phone: leadFormData.phone.trim(),
+        email: leadFormData.email.trim() || null,
+        source: leadFormData.source as any,
+        interest: leadFormData.interest as any,
+        fitness_goal: leadFormData.fitness_goal.trim() || null,
+        preferred_call_time: leadFormData.preferred_call_time.trim() || null,
+      })
+      .eq('id', lead.id);
+
+    if (error) {
+      toast.error('Failed to update lead');
+    } else {
+      toast.success('Lead updated successfully');
+      setIsEditingLead(false);
+      onUpdate();
+    }
+    setIsUpdating(false);
+  };
+
+  const deleteLead = async () => {
+    if (!lead) return;
+    setIsUpdating(true);
+
+    // First delete follow-ups
+    await supabase.from('lead_follow_ups').delete().eq('lead_id', lead.id);
+    
+    // Then delete lead
+    const { error } = await supabase.from('leads').delete().eq('id', lead.id);
+
+    if (error) {
+      toast.error('Failed to delete lead');
+    } else {
+      toast.success('Lead deleted successfully');
+      setShowDeleteConfirm(false);
+      onOpenChange(false);
+      onUpdate();
+    }
+    setIsUpdating(false);
   };
 
   const updateStatus = async (newStatus: string) => {
@@ -224,85 +337,236 @@ export default function LeadDetailDialog({
   const nextStatuses = statusFlow[lead.status] || [];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">{lead.name}</DialogTitle>
-            <Badge className={`${statusColors[lead.status]} text-sm`}>
-              {statusLabels[lead.status]}
-            </Badge>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto px-6 pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) hsl(var(--muted))' }}>
-          <div className="space-y-6 pt-4">
-            {/* Contact Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{lead.phone}</span>
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <DialogTitle className="text-2xl truncate">{lead.name}</DialogTitle>
+                <Badge className={`${statusColors[lead.status]} text-sm shrink-0`}>
+                  {statusLabels[lead.status]}
+                </Badge>
               </div>
-              {lead.email && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span>{lead.email}</span>
-                </div>
-              )}
-              {lead.source && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="capitalize">{lead.source.replace('_', ' ')}</span>
-                </div>
-              )}
-              {lead.interest && (
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="capitalize">{lead.interest.replace('_', ' ')}</span>
-                </div>
-              )}
-              {lead.preferred_call_time && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>Best time: {lead.preferred_call_time}</span>
-                </div>
-              )}
-              {lead.fitness_goal && (
-                <div className="col-span-2 flex items-start gap-2 text-sm">
-                  <Target className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <span>{lead.fitness_goal}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setIsEditingLead(!isEditingLead)}
+                  className="h-8 w-8"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+          </DialogHeader>
 
-            <Separator />
+          <div className="flex-1 overflow-y-auto px-6 pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-muted" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) hsl(var(--muted))' }}>
+            <div className="space-y-6 pt-4">
+              {/* Edit Lead Form */}
+              {isEditingLead ? (
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <Label className="text-base font-semibold">Edit Lead Information</Label>
+                    
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-name">Name *</Label>
+                          <Input
+                            id="edit-name"
+                            value={leadFormData.name}
+                            onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
+                            placeholder="Full name"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-phone">Phone *</Label>
+                          <Input
+                            id="edit-phone"
+                            value={leadFormData.phone}
+                            onChange={(e) => setLeadFormData({ ...leadFormData, phone: e.target.value })}
+                            placeholder="Phone number"
+                          />
+                        </div>
+                      </div>
 
-            {/* Status Workflow */}
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Update Status</Label>
-              {nextStatuses.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {nextStatuses.map((status) => (
-                    <Button
-                      key={status}
-                      variant="outline"
-                      size="sm"
-                      disabled={isUpdating}
-                      onClick={() => updateStatus(status)}
-                      className="border-2"
-                    >
-                      Move to {statusLabels[status]}
-                    </Button>
-                  ))}
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-email">Email</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          value={leadFormData.email}
+                          onChange={(e) => setLeadFormData({ ...leadFormData, email: e.target.value })}
+                          placeholder="Email address"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Source</Label>
+                          <Select
+                            value={leadFormData.source}
+                            onValueChange={(v) => setLeadFormData({ ...leadFormData, source: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sources.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>
+                                  {s.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Interest</Label>
+                          <Select
+                            value={leadFormData.interest}
+                            onValueChange={(v) => setLeadFormData({ ...leadFormData, interest: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {interests.map((i) => (
+                                <SelectItem key={i.value} value={i.value}>
+                                  {i.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-call-time">Preferred Call Time</Label>
+                        <Input
+                          id="edit-call-time"
+                          value={leadFormData.preferred_call_time}
+                          onChange={(e) => setLeadFormData({ ...leadFormData, preferred_call_time: e.target.value })}
+                          placeholder="e.g., Morning, 10am-12pm"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-goal">Fitness Goal</Label>
+                        <Textarea
+                          id="edit-goal"
+                          value={leadFormData.fitness_goal}
+                          onChange={(e) => setLeadFormData({ ...leadFormData, fitness_goal: e.target.value })}
+                          placeholder="What are they looking to achieve?"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditingLead(false);
+                            // Reset form
+                            setLeadFormData({
+                              name: lead.name || '',
+                              phone: lead.phone || '',
+                              email: lead.email || '',
+                              source: lead.source || 'walk_in',
+                              interest: lead.interest || 'normal',
+                              fitness_goal: lead.fitness_goal || '',
+                              preferred_call_time: lead.preferred_call_time || '',
+                            });
+                          }}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Cancel
+                        </Button>
+                        <Button onClick={saveLeadEdit} disabled={isUpdating}>
+                          <Save className="mr-2 h-4 w-4" />
+                          {isUpdating ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  This lead is {lead.status}. No further status changes available.
-                </p>
+                /* Contact Info - View Mode */
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{lead.phone}</span>
+                  </div>
+                  {lead.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span>{lead.email}</span>
+                    </div>
+                  )}
+                  {lead.source && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="capitalize">{lead.source.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {lead.interest && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="capitalize">{lead.interest.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {lead.preferred_call_time && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>Best time: {lead.preferred_call_time}</span>
+                    </div>
+                  )}
+                  {lead.fitness_goal && (
+                    <div className="col-span-2 flex items-start gap-2 text-sm">
+                      <Target className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <span>{lead.fitness_goal}</span>
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
 
-            <Separator />
+              <Separator />
+
+              {/* Status Workflow */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Update Status</Label>
+                {nextStatuses.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {nextStatuses.map((status) => (
+                      <Button
+                        key={status}
+                        variant="outline"
+                        size="sm"
+                        disabled={isUpdating}
+                        onClick={() => updateStatus(status)}
+                        className="border-2"
+                      >
+                        Move to {statusLabels[status]}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    This lead is {lead.status}. No further status changes available.
+                  </p>
+                )}
+              </div>
+
+              <Separator />
 
             {/* Add Follow-up Entry */}
             <Card>
@@ -454,5 +718,27 @@ export default function LeadDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{lead.name}"? This will also delete all follow-up entries. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={deleteLead}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isUpdating ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
